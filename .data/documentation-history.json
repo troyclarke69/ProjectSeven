@@ -1,0 +1,29 @@
+[
+  {
+    "id": "706ae783-ed2c-41d3-906d-5aeb9c096658",
+    "projectId": "project-seven",
+    "projectName": "Project Seven",
+    "documentation": "# Project Seven\n\n## Snapshot\nA central registry for shipping projects, stack choices, and AI-maintained documentation.\n\n## Delivery Context\n- Version: 1.0\n- Status: Planning\n- Platforms: Web\n- Tools: Next.js, Firebase, Gemini\n- Source: https://github.com/your-org/project-seven\n- Website: https://project-seven.example.com\n\n## Refresh Context\n- Reason: metadata_update\n- Triggered by: dashboard\n- Repository: Not linked\n- Branch: Not specified\n\n## Recent Change Notes\n- No commit details were supplied for this refresh.\n\n## Suggested Next Documentation Pass\n- Add implementation notes for key flows.\n- Capture architecture decisions as they stabilize.\n- Attach release notes when the version changes.",
+    "reason": "metadata_update",
+    "source": "dashboard",
+    "createdAt": "2026-04-08T15:52:02.299Z"
+  },
+  {
+    "id": "4316cc92-efe2-4f1b-864e-40195ee5cd18",
+    "projectId": "project-seven",
+    "projectName": "Project Seven",
+    "documentation": "# Project Seven\n\n## Snapshot\nA central registry for shipping projects, stack choices, and AI-maintained documentation.\n\n## Delivery Context\n- Version: 1.0\n- Status: Planning\n- Platforms: Web\n- Tools: Next.js, Firebase, Gemini\n- Source: https://github.com/your-org/project-seven\n- Website: https://project-seven.example.com\n\n## Refresh Context\n- Reason: metadata_update\n- Triggered by: dashboard\n- Repository: Not linked\n- Branch: Not specified\n\n## Recent Change Notes\n- No commit details were supplied for this refresh.\n\n## Suggested Next Documentation Pass\n- Add implementation notes for key flows.\n- Capture architecture decisions as they stabilize.\n- Attach release notes when the version changes.",
+    "reason": "metadata_update",
+    "source": "dashboard",
+    "createdAt": "2026-04-08T15:50:52.357Z"
+  },
+  {
+    "id": "085144e6-926e-4cfe-b22d-260ed3d86d00",
+    "projectId": "project-seven",
+    "projectName": "Project Seven",
+    "documentation": "# Project Seven\n\n## Snapshot\nA central registry for shipping projects, stack choices, and AI-maintained documentation.\n\n## Delivery Context\n- Version: 0.1.0\n- Status: Planning\n- Platforms: Web\n- Tools: Next.js, Firebase, Gemini\n- Source: https://github.com/your-org/project-seven\n- Website: https://project-seven.example.com\n\n## Refresh Context\n- Reason: metadata_update\n- Triggered by: dashboard\n- Repository: Not linked\n- Branch: Not specified\n\n## Recent Change Notes\n- No commit details were supplied for this refresh.\n\n## Suggested Next Documentation Pass\n- Add implementation notes for key flows.\n- Capture architecture decisions as they stabilize.\n- Attach release notes when the version changes.",
+    "reason": "metadata_update",
+    "source": "dashboard",
+    "createdAt": "2026-04-08T15:50:37.722Z"
+  }
+]
