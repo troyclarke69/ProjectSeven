@@ -4,16 +4,16 @@ const today = new Date().toISOString().slice(0, 10);
 
 export const sampleProjects: ProjectRecord[] = [
   {
-    id: "project-seven",
-    name: "Project Seven",
-    description: "A central registry for shipping projects, stack choices, and AI-maintained documentation.",
+    id: "project-one",
+    name: "Project Name",
+    description: "There is something great about the project.",
     version: "0.1.0",
     platforms: ["Web"],
-    tools: ["Next.js", "Firebase", "Gemini"],
+    tools: ["Hammer", "Nails", "Saw"],
     startDate: today,
     modifiedAt: new Date().toISOString(),
-    githubUrl: "https://github.com/your-org/project-seven",
-    websiteUrl: "https://project-seven.example.com",
+    githubUrl: "https://github.com/your-org/projectName",
+    websiteUrl: "https://projectName.example.com",
     status: "Planning",
     documentation: "Seed documentation will appear here after the first save.",
     documentationUpdatedAt: "",
