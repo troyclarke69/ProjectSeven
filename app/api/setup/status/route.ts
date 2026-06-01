@@ -11,6 +11,8 @@ const hasPublicFirebaseConfig = Boolean(
     process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 );
 
+console.log(`Public Firebase Configured: ${hasPublicFirebaseConfig}`);
+
 export async function GET() {
   return NextResponse.json({
     firebaseAdminReady: isFirebaseAdminConfigured,

@@ -102,8 +102,11 @@ export function ProjectDashboard() {
   const trackedProjects = projects.length;
   const documentedProjects = projects.filter((project) => Boolean(project.documentation.trim())).length;
   const stackCount = new Set(projects.flatMap((project) => [...project.platforms, ...project.tools])).size;
-  const webhookUrl =
-    typeof window === "undefined" ? "/api/github/webhook" : `${window.location.origin}/api/github/webhook`;
+  const [webhookUrl, setWebhookUrl] = useState("/api/github/webhook");
+
+  useEffect(() => {
+    setWebhookUrl(`${window.location.origin}/api/github/webhook`);
+  }, []);
 
   const updateProject = (projectId: string, updater: (current: ProjectRecord) => ProjectRecord) => {
     setProjects((current) =>

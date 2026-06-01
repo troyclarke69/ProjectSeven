@@ -40,6 +40,8 @@ export async function getProjects() {
     }
 
     const snapshot = await db.collection("projects").orderBy("name").get();
+    console.log(`Fetched ${snapshot.size} projects from Firebase`);
+
     if (snapshot.empty) {
       return sampleProjects;
     }
@@ -110,6 +112,7 @@ export async function listDocumentationHistory(projectId: string, maxItems = 6) 
       .limit(maxItems)
       .get();
 
+    console.log(`Fetched ${snapshot.size} documentation history entries for project ${projectId} from Firebase`);
     return snapshot.docs.map((entry) => entry.data() as DocumentationHistoryEntry);
   }
 
@@ -181,7 +184,8 @@ export async function listEffortEntries(projectId?: string, maxItems = 40) {
     } else {
       snapshot = await db.collection("effortLog").orderBy("createdAt", "desc").limit(maxItems).get();
     }
-
+    
+    console.log(`Fetched ${snapshot.size} effort entries for project ${projectId} from Firebase`);
     return snapshot.docs.map((entry) => entry.data() as EffortEntry);
   }
 

@@ -174,8 +174,11 @@ export function ProjectDashboardV2() {
   const totalAiMinutes = effortSummary.reduce((total, entry) => total + entry.aiMinutes, 0);
   const totalTrackedMinutes = totalHumanMinutes + totalAiMinutes;
   const stackCount = new Set(projects.flatMap((project) => [...project.platforms, ...project.tools])).size;
-  const webhookUrl =
-    typeof window === "undefined" ? "/api/github/webhook" : `${window.location.origin}/api/github/webhook`;
+  const [webhookUrl, setWebhookUrl] = useState("/api/github/webhook");
+
+  useEffect(() => {
+    setWebhookUrl(`${window.location.origin}/api/github/webhook`);
+  }, []);
 
   const topChartProjects = effortSummary.slice(0, 6);
   const maxChartMinutes = Math.max(...topChartProjects.map((entry) => entry.totalMinutes), 1);

@@ -23,7 +23,20 @@ This is a starter Next.js app for a project-management style registry with:
 - `GEMINI_API_KEY` for AI-generated documentation
 - `FIREBASE_ADMIN_*` for server-side Firestore persistence and webhook-safe updates
 - `NEXT_PUBLIC_FIREBASE_*` if you later add direct browser-side Firebase features
-- `GITHUB_WEBHOOK_SECRET` when connecting a GitHub webhook
+- `GITHUB_WEBHOOK_SECRET` when connecting a GitHub webhook. 
+* each repo’s webhook should point to the same endpoint: https://<your-domain>/api/github/webhook
+each repo’s webhook should use the same secret value
+that same secret value must be set once in your app as GITHUB_WEBHOOK_SECRET
+* Create a SECRET:
+In PS:
+[Convert]::ToBase64String((1..32 | % { [byte](Get-Random -Min 0 -Max 256) }))
+
+# ngrok (proxy for Webhook local testing)
+ngrok config add-authtoken ************
+ngrok http 3000
+
+https://pantry-mouse-eraser.ngrok-free.dev/
+
 
 4. Run the app:
 

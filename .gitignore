@@ -2,3 +2,8 @@
 node_modules
 .env.local
 npm-debug.log*
+.env.*
+.txt
+.data/projects.json
+.data/effort-log.json
+.data/documentation-history.json
