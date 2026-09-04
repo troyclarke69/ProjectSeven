@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { signOut, useSession } from "next-auth/react";
 import { formatDateTime, formatTagInput, parseTagInput } from "@/lib/projects";
 import { DocumentationHistoryEntry, EffortEntry, EffortSummary, ProjectRecord } from "@/lib/types";
 
@@ -71,6 +73,7 @@ async function loadEffort(projectId?: string) {
 type SaveState = Record<string, "idle" | "saving" | "saved" | "error">;
 
 export function ProjectDashboardV2() {
+  const { data: session } = useSession();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -84,6 +87,9 @@ export function ProjectDashboardV2() {
   const [manualNotes, setManualNotes] = useState("");
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(null);
   const [timerSeconds, setTimerSeconds] = useState(0);
+  const [tagDrafts, setTagDrafts] = useState<Record<string, { platforms?: string; tools?: string }>>({});
+  const [timerProjectId, setTimerProjectId] = useState<string>("");
+  const [manualEntryProjectId, setManualEntryProjectId] = useState<string>("");
 
   useEffect(() => {
     loadProjects()
@@ -167,6 +173,30 @@ export function ProjectDashboardV2() {
     () => effortSummary.find((entry) => entry.projectId === activeProjectId) ?? null,
     [activeProjectId, effortSummary],
   );
+
+  const timerProject = useMemo(
+    () => projects.find((project) => project.id === timerProjectId) ?? selectedProject,
+    [timerProjectId, projects, selectedProject],
+  );
+
+  const manualEntryProject = useMemo(
+    () => projects.find((project) => project.id === manualEntryProjectId) ?? selectedProject,
+    [manualEntryProjectId, projects, selectedProject],
+  );
+
+  // Default each effort mechanism's target project to whatever is selected
+  // in the Projects Sheet, but only when the current choice is missing or
+  // no longer exists -- an explicit dropdown pick is never overridden.
+  useEffect(() => {
+    if (!selectedProject) {
+      return;
+    }
+
+    setTimerProjectId((current) => (projects.some((project) => project.id === current) ? current : selectedProject.id));
+    setManualEntryProjectId((current) =>
+      projects.some((project) => project.id === current) ? current : selectedProject.id,
+    );
+  }, [selectedProject, projects]);
 
   const trackedProjects = projects.length;
   const documentedProjects = projects.filter((project) => Boolean(project.documentation.trim())).length;
@@ -295,6 +325,11 @@ export function ProjectDashboardV2() {
       }
 
       updateProject(project.id, () => finalProject);
+      setTagDrafts((current) => {
+        const next = { ...current };
+        delete next[project.id];
+        return next;
+      });
       setSaveStates((current) => ({ ...current, [project.id]: "saved" }));
       setGlobalMessage(
         shouldRegenerateDocs
@@ -319,7 +354,7 @@ export function ProjectDashboardV2() {
   };
 
   const submitManualEntry = async () => {
-    if (!selectedProject) {
+    if (!manualEntryProject) {
       return;
     }
 
@@ -329,8 +364,8 @@ export function ProjectDashboardV2() {
 
     try {
       await postEffortEntry({
-        projectId: selectedProject.id,
-        projectName: selectedProject.name || "Untitled project",
+        projectId: manualEntryProject.id,
+        projectName: manualEntryProject.name || "Untitled project",
         actor: "human",
         source: "manual_entry",
         startedAt: startedAt.toISOString(),
@@ -354,7 +389,7 @@ export function ProjectDashboardV2() {
   };
 
   const stopTimer = async () => {
-    if (!selectedProject || !timerStartedAt) {
+    if (!timerProject || !timerStartedAt) {
       return;
     }
 
@@ -363,8 +398,8 @@ export function ProjectDashboardV2() {
 
     try {
       await postEffortEntry({
-        projectId: selectedProject.id,
-        projectName: selectedProject.name || "Untitled project",
+        projectId: timerProject.id,
+        projectName: timerProject.name || "Untitled project",
         actor: "human",
         source: "manual_timer",
         startedAt: timerStartedAt,
@@ -384,9 +419,32 @@ export function ProjectDashboardV2() {
   return (
     <main className="shell">
       <div className="frame">
-        <section className="hero">
+        {/* hero-single below matches the CSS override added while the right-hand
+            status panel is disabled -- remove that class if the panel comes back. */}
+        <section className="hero hero-single">
           <div className="panel hero-card">
-            <p className="eyebrow">Projectry</p>
+            <div className="account-bar">
+              <p className="eyebrow">Projectry</p>
+              <div className="account-bar-right">
+                {session?.user && (
+                  <div className="account-bar-user">
+                    <span>{session.user.email}</span>
+                    <button type="button" onClick={() => signOut({ callbackUrl: "/login" })}>
+                      Sign out
+                    </button>
+                  </div>
+                )}
+                <div className="account-links">
+                  <Link href="/guide">View guide</Link>
+                  <a href="/project-seven-guide.md" download>
+                    Download guide
+                  </a>
+                  <a href="https://github.com/troyclarke69/ProjectSeven" target="_blank" rel="noopener noreferrer">
+                    Source on GitHub
+                  </a>
+                </div>
+              </div>
+            </div>
             {/* <h1>Spreadsheet control for your active portfolio.</h1>
             <p>
               Track project metadata, AI documentation activity, and human effort in one place so the work picture
@@ -408,6 +466,8 @@ export function ProjectDashboardV2() {
             </div>
           </div>
 
+          {/* Storage mode / idle threshold / portfolio message panel --
+              temporarily disabled, kept for later use.
           <div className="panel">
             <ul className="status-list">
               <li>
@@ -424,6 +484,7 @@ export function ProjectDashboardV2() {
               </li>
             </ul>
           </div>
+          */}
         </section>
 
         <section className="panel board">
@@ -451,148 +512,178 @@ export function ProjectDashboardV2() {
           </div>
 
           <div className="table-wrap">
-            <table>
+            <table className="sheet-table">
               <thead>
                 <tr>
                   <th>Name</th>
                   <th>Description</th>
                   <th>Version</th>
-                  <th>Platforms</th>
                   <th>Tools</th>
+                  <th>Status</th>
+                  <th rowSpan={2}>Actions</th>
+                </tr>
+                <tr>
                   <th>Start Date</th>
                   <th>Modified</th>
+                  <th>Platforms</th>
                   <th>GitHub URL</th>
                   <th>Website URL</th>
-                  <th>Status</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={11}>Loading projects...</td>
+                    <td colSpan={6}>Loading projects...</td>
                   </tr>
                 ) : (
-                  projects.map((project) => (
-                    <tr key={project.id} onClick={() => setActiveProjectId(project.id)}>
-                      <td>
-                        <input
-                          value={project.name}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({ ...current, name: event.target.value }))
-                          }
-                          placeholder="Project name"
-                        />
-                      </td>
-                      <td>
-                        <textarea
-                          value={project.description}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({
-                              ...current,
-                              description: event.target.value,
-                            }))
-                          }
-                          placeholder="What is this project?"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          value={project.version}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({ ...current, version: event.target.value }))
-                          }
-                          placeholder="0.1.0"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          value={formatTagInput(project.platforms)}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({
-                              ...current,
-                              platforms: parseTagInput(event.target.value),
-                            }))
-                          }
-                          placeholder="Web, iOS, Android"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          value={formatTagInput(project.tools)}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({
-                              ...current,
-                              tools: parseTagInput(event.target.value),
-                            }))
-                          }
-                          placeholder="Next.js, Firebase, Gemini"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="date"
-                          value={project.startDate}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({ ...current, startDate: event.target.value }))
-                          }
-                        />
-                      </td>
-                      <td>{formatDateTime(project.modifiedAt)}</td>
-                      <td>
-                        <input
-                          value={project.githubUrl}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({
-                              ...current,
-                              githubUrl: event.target.value,
-                            }))
-                          }
-                          placeholder="https://github.com/..."
-                        />
-                      </td>
-                      <td>
-                        <input
-                          value={project.websiteUrl}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({
-                              ...current,
-                              websiteUrl: event.target.value,
-                            }))
-                          }
-                          placeholder="https://..."
-                        />
-                      </td>
-                      <td>
-                        <input
-                          value={project.status}
-                          onChange={(event) =>
-                            updateProject(project.id, (current) => ({ ...current, status: event.target.value }))
-                          }
-                          placeholder="Planning"
-                        />
-                      </td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            className="button button-primary"
-                            onClick={() => saveProject(project, true)}
-                            type="button"
-                          >
-                            Save + doc
-                          </button>
-                          <button
-                            className="button button-ghost"
-                            onClick={() => saveProject(project, false)}
-                            type="button"
-                          >
-                            Save only
-                          </button>
-                          {saveStates[project.id] === "error" ? <span className="badge">Retry needed</span> : null}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  projects.flatMap((project) => {
+                    const isActive = project.id === activeProjectId;
+                    const rowClass = (position: "first" | "second") =>
+                      `sheet-row-${position}${isActive ? " is-active" : ""}`;
+
+                    return [
+                      <tr
+                        key={`${project.id}-a`}
+                        className={rowClass("first")}
+                        onClick={() => setActiveProjectId(project.id)}
+                      >
+                        <td>
+                          <input
+                            value={project.name}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({ ...current, name: event.target.value }))
+                            }
+                            placeholder="Project name"
+                          />
+                        </td>
+                        <td>
+                          <textarea
+                            value={project.description}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({
+                                ...current,
+                                description: event.target.value,
+                              }))
+                            }
+                            placeholder="What is this project?"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={project.version}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({ ...current, version: event.target.value }))
+                            }
+                            placeholder="0.1.0"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={tagDrafts[project.id]?.tools ?? formatTagInput(project.tools)}
+                            onChange={(event) => {
+                              const { value } = event.target;
+                              setTagDrafts((current) => ({
+                                ...current,
+                                [project.id]: { ...current[project.id], tools: value },
+                              }));
+                              updateProject(project.id, (current) => ({
+                                ...current,
+                                tools: parseTagInput(value),
+                              }));
+                            }}
+                            placeholder="Next.js, Firebase, Gemini"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={project.status}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({ ...current, status: event.target.value }))
+                            }
+                            placeholder="Planning"
+                          />
+                        </td>
+                        <td rowSpan={2}>
+                          <div className="table-actions">
+                            <button
+                              className="button button-primary"
+                              onClick={() => saveProject(project, true)}
+                              type="button"
+                            >
+                              Save + doc
+                            </button>
+                            <button
+                              className="button button-ghost"
+                              onClick={() => saveProject(project, false)}
+                              type="button"
+                            >
+                              Save only
+                            </button>
+                            {saveStates[project.id] === "error" ? (
+                              <span className="badge">Retry needed</span>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>,
+                      <tr
+                        key={`${project.id}-b`}
+                        className={rowClass("second")}
+                        onClick={() => setActiveProjectId(project.id)}
+                      >
+                        <td>
+                          <input
+                            type="date"
+                            value={project.startDate}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({ ...current, startDate: event.target.value }))
+                            }
+                          />
+                        </td>
+                        <td>{formatDateTime(project.modifiedAt)}</td>
+                        <td>
+                          <input
+                            value={tagDrafts[project.id]?.platforms ?? formatTagInput(project.platforms)}
+                            onChange={(event) => {
+                              const { value } = event.target;
+                              setTagDrafts((current) => ({
+                                ...current,
+                                [project.id]: { ...current[project.id], platforms: value },
+                              }));
+                              updateProject(project.id, (current) => ({
+                                ...current,
+                                platforms: parseTagInput(value),
+                              }));
+                            }}
+                            placeholder="Web, iOS, Android"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={project.githubUrl}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({
+                                ...current,
+                                githubUrl: event.target.value,
+                              }))
+                            }
+                            placeholder="https://github.com/..."
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={project.websiteUrl}
+                            onChange={(event) =>
+                              updateProject(project.id, (current) => ({
+                                ...current,
+                                websiteUrl: event.target.value,
+                              }))
+                            }
+                            placeholder="https://..."
+                          />
+                        </td>
+                      </tr>,
+                    ];
+                  })
                 )}
               </tbody>
             </table>
@@ -675,13 +766,27 @@ export function ProjectDashboardV2() {
                     {timerStartedAt ? "Running" : "Stopped"}
                   </span>
                 </div>
+                <label className="field">
+                  <span className="summary-label">Project</span>
+                  <select
+                    value={timerProjectId}
+                    onChange={(event) => setTimerProjectId(event.target.value)}
+                    disabled={Boolean(timerStartedAt)}
+                  >
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name || "Untitled project"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <p className="timer-display">{new Date(timerSeconds * 1000).toISOString().slice(11, 19)}</p>
                 <div className="actions">
                   <button
                     className="button button-primary"
                     onClick={startTimer}
                     type="button"
-                    disabled={Boolean(timerStartedAt) || !selectedProject}
+                    disabled={Boolean(timerStartedAt) || !timerProject}
                   >
                     Start timer
                   </button>
@@ -689,7 +794,7 @@ export function ProjectDashboardV2() {
                     className="button button-ghost"
                     onClick={stopTimer}
                     type="button"
-                    disabled={!timerStartedAt || !selectedProject}
+                    disabled={!timerStartedAt || !timerProject}
                   >
                     Stop timer
                   </button>
@@ -702,6 +807,19 @@ export function ProjectDashboardV2() {
                   <span className="setup-ready">Available</span>
                 </div>
                 <div className="manual-grid">
+                  <label className="field">
+                    <span className="summary-label">Project</span>
+                    <select
+                      value={manualEntryProjectId}
+                      onChange={(event) => setManualEntryProjectId(event.target.value)}
+                    >
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name || "Untitled project"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="field">
                     <span className="summary-label">Minutes</span>
                     <input value={manualMinutes} onChange={(event) => setManualMinutes(event.target.value)} />
@@ -719,7 +837,7 @@ export function ProjectDashboardV2() {
                   className="button button-secondary"
                   onClick={submitManualEntry}
                   type="button"
-                  disabled={!selectedProject}
+                  disabled={!manualEntryProject}
                 >
                   Add human time
                 </button>
@@ -805,6 +923,7 @@ export function ProjectDashboardV2() {
           </article>
         </section>
 
+        {/* Setup Guide -- temporarily disabled, kept for later use.
         <section className="panel stack">
           <div className="setup-header">
             <div>
@@ -908,6 +1027,7 @@ export function ProjectDashboardV2() {
             </div>
           </div>
         </section>
+        */}
 
         <section className="details">
           <article className="panel stack">

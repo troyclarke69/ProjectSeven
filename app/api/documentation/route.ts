@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { normalizeProject } from "@/lib/projects";
 import { refreshProjectDocumentation } from "@/lib/server/documentation";
 import { ProjectRecordInput } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
     const body = (await request.json()) as {
       project: ProjectRecordInput;
       persist?: boolean;
@@ -24,14 +26,18 @@ export async function POST(request: Request) {
     }
 
     const project = normalizeProject(body.project);
-    const refreshed = await refreshProjectDocumentation(project, {
-      reason: body.reason ?? "manual_refresh",
-      source: body.source ?? "system",
-      repository: body.repository,
-      branch: body.branch,
-      commitMessages: body.commitMessages,
-      persistProject: body.persist ?? true,
-    });
+    const refreshed = await refreshProjectDocumentation(
+      project,
+      {
+        reason: body.reason ?? "manual_refresh",
+        source: body.source ?? "system",
+        repository: body.repository,
+        branch: body.branch,
+        commitMessages: body.commitMessages,
+        persistProject: body.persist ?? true,
+      },
+      session?.user?.id,
+    );
 
     return NextResponse.json({
       project: refreshed.project,

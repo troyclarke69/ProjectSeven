@@ -1,10 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { DocumentationContext } from "@/lib/ai/types";
 import { ProjectRecord } from "@/lib/types";
 
-const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 
-export const isGeminiConfigured = Boolean(process.env.GEMINI_API_KEY);
+export const isAnthropicConfigured = Boolean(process.env.ANTHROPIC_API_KEY);
 
 function buildPrompt(project: ProjectRecord, context?: DocumentationContext) {
   return `
@@ -26,13 +26,18 @@ Output requirements:
 `.trim();
 }
 
-export async function generateWithGemini(project: ProjectRecord, context?: DocumentationContext) {
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+export async function generateWithAnthropic(project: ProjectRecord, context?: DocumentationContext) {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
-  const response = await client.models.generateContent({
+  const response = await client.messages.create({
     model,
-    contents: buildPrompt(project, context),
+    max_tokens: 1024,
+    messages: [{ role: "user", content: buildPrompt(project, context) }],
   });
 
-  return response.text ?? "";
+  const textBlock = response.content.find(
+    (block): block is Anthropic.TextBlock => block.type === "text",
+  );
+
+  return textBlock?.text ?? "";
 }

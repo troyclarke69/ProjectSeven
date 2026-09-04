@@ -62,8 +62,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Push payload did not include repository details." }, { status: 400 });
   }
 
-  const projects = await findProjectsByRepository(repository);
-  if (!projects.length) {
+  const matches = await findProjectsByRepository(repository);
+  if (!matches.length) {
     return NextResponse.json({
       ok: true,
       matchedProjects: 0,
@@ -76,14 +76,18 @@ export async function POST(request: Request) {
     .filter((message): message is string => Boolean(message));
 
   const refreshedProjects = await Promise.all(
-    projects.map((project) =>
-      refreshProjectDocumentation(project, {
-        reason: "code_change",
-        source: "github_webhook",
-        repository,
-        branch: branchFromRef(payload.ref),
-        commitMessages,
-      }),
+    matches.map(({ project, ownerId }) =>
+      refreshProjectDocumentation(
+        project,
+        {
+          reason: "code_change",
+          source: "github_webhook",
+          repository,
+          branch: branchFromRef(payload.ref),
+          commitMessages,
+        },
+        ownerId,
+      ),
     ),
   );
 

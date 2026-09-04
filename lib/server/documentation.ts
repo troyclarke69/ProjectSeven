@@ -1,4 +1,4 @@
-import { generateProjectDocumentation } from "@/lib/gemini";
+import { generateProjectDocumentation } from "@/lib/ai/documentation";
 import { saveDocumentationHistory, saveEffortEntry, saveProject } from "@/lib/server/project-store";
 import { DocumentationHistoryEntry, DocumentationSource, DocumentationTrigger, EffortEntry, ProjectRecord } from "@/lib/types";
 
@@ -11,7 +11,11 @@ type RefreshOptions = {
   persistProject?: boolean;
 };
 
-export async function refreshProjectDocumentation(project: ProjectRecord, options: RefreshOptions) {
+export async function refreshProjectDocumentation(
+  project: ProjectRecord,
+  options: RefreshOptions,
+  ownerId?: string,
+) {
   const startedAt = new Date().toISOString();
   const documentation = await generateProjectDocumentation(project, {
     reason: options.reason,
@@ -29,7 +33,7 @@ export async function refreshProjectDocumentation(project: ProjectRecord, option
   };
 
   if (options.persistProject ?? true) {
-    await saveProject(updatedProject);
+    await saveProject(updatedProject, ownerId);
   }
 
   const historyEntry: DocumentationHistoryEntry = {
@@ -45,7 +49,7 @@ export async function refreshProjectDocumentation(project: ProjectRecord, option
     commitMessages: options.commitMessages,
   };
 
-  await saveDocumentationHistory(historyEntry);
+  await saveDocumentationHistory(historyEntry, ownerId);
 
   const endedAt = new Date().toISOString();
   const durationMinutes = Math.max(
@@ -65,7 +69,7 @@ export async function refreshProjectDocumentation(project: ProjectRecord, option
     createdAt: endedAt,
   };
 
-  await saveEffortEntry(effortEntry);
+  await saveEffortEntry(effortEntry, ownerId);
 
   return {
     project: updatedProject,

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { isAnthropicConfigured } from "@/lib/anthropic";
+import { isPostgresConfigured } from "@/lib/db/client";
 import { isFirebaseAdminConfigured } from "@/lib/firebase/admin";
 import { isGeminiConfigured } from "@/lib/gemini";
 
@@ -11,16 +13,20 @@ const hasPublicFirebaseConfig = Boolean(
     process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 );
 
-console.log(`Public Firebase Configured: ${hasPublicFirebaseConfig}`);
-
 export async function GET() {
   return NextResponse.json({
+    postgresReady: isPostgresConfigured,
+    anthropicReady: isAnthropicConfigured,
     firebaseAdminReady: isFirebaseAdminConfigured,
     firebaseClientReady: hasPublicFirebaseConfig,
     geminiReady: isGeminiConfigured,
     githubWebhookSecretReady: Boolean(process.env.GITHUB_WEBHOOK_SECRET),
+    anthropicModel: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5",
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     requiredEnv: {
+      postgres: ["DATABASE_URL"],
+      auth: ["AUTH_SECRET"],
+      anthropic: ["ANTHROPIC_API_KEY", "ANTHROPIC_MODEL"],
       firebaseAdmin: [
         "FIREBASE_ADMIN_PROJECT_ID",
         "FIREBASE_ADMIN_CLIENT_EMAIL",
