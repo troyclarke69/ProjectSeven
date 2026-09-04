@@ -7,6 +7,10 @@ import type { NextAuthConfig } from "next-auth";
 // (Credentials provider, database lookups, password hashing) lives in
 // lib/auth.ts and is only used by Node-runtime API routes.
 export const authConfig: NextAuthConfig = {
+  // Netlify (like most non-Vercel hosts) isn't auto-trusted by Auth.js, so
+  // without this every sign-in attempt fails with an UntrustedHost error
+  // (surfaces to the client as a 500 on the credentials callback).
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
