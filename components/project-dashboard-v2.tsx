@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { formatDateTime, formatTagInput, parseTagInput } from "@/lib/projects";
 import { DocumentationHistoryEntry, EffortEntry, EffortSummary, ProjectRecord } from "@/lib/types";
@@ -72,6 +72,9 @@ async function loadEffort(projectId?: string) {
 
 type SaveState = Record<string, "idle" | "saving" | "saved" | "error">;
 
+type ToastTone = "success" | "error" | "info";
+type ToastMessage = { id: number; message: string; tone: ToastTone };
+
 export function ProjectDashboardV2() {
   const { data: session } = useSession();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
@@ -90,6 +93,18 @@ export function ProjectDashboardV2() {
   const [tagDrafts, setTagDrafts] = useState<Record<string, { platforms?: string; tools?: string }>>({});
   const [timerProjectId, setTimerProjectId] = useState<string>("");
   const [manualEntryProjectId, setManualEntryProjectId] = useState<string>("");
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const toastIdRef = useRef(0);
+
+  const dismissToast = (id: number) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  };
+
+  const pushToast = (message: string, tone: ToastTone = "info") => {
+    const id = ++toastIdRef.current;
+    setToasts((current) => [...current, { id, message, tone }]);
+    window.setTimeout(() => dismissToast(id), 4000);
+  };
 
   useEffect(() => {
     loadProjects()
@@ -284,6 +299,7 @@ export function ProjectDashboardV2() {
     setProjects((current) => [next, ...current]);
     setActiveProjectId(next.id);
     setGlobalMessage("New project row added. Fill it in and save when ready.");
+    pushToast("New project row added. Fill it in and save when ready.", "info");
   };
 
   const saveProject = async (project: ProjectRecord, shouldRegenerateDocs = true) => {
@@ -331,11 +347,11 @@ export function ProjectDashboardV2() {
         return next;
       });
       setSaveStates((current) => ({ ...current, [project.id]: "saved" }));
-      setGlobalMessage(
-        shouldRegenerateDocs
-          ? "Project saved and documentation refreshed."
-          : "Project saved without regenerating documentation.",
-      );
+      const savedMessage = shouldRegenerateDocs
+        ? "Project saved and documentation refreshed."
+        : "Project saved without regenerating documentation.";
+      setGlobalMessage(savedMessage);
+      pushToast(savedMessage, "success");
 
       if (finalProject.id === activeProjectId) {
         const historyResponse = await fetch(`/api/projects/${finalProject.id}/history`);
@@ -349,7 +365,9 @@ export function ProjectDashboardV2() {
       }
     } catch {
       setSaveStates((current) => ({ ...current, [project.id]: "error" }));
-      setGlobalMessage("Saving failed. Review your Firebase or Gemini configuration and try again.");
+      const saveFailedMessage = "Saving failed. Review your database and AI provider configuration and try again.";
+      setGlobalMessage(saveFailedMessage);
+      pushToast(saveFailedMessage, "error");
     }
   };
 
@@ -376,16 +394,18 @@ export function ProjectDashboardV2() {
       });
       setManualNotes("");
       setGlobalMessage("Manual human effort saved.");
+      pushToast("Manual human effort saved.", "success");
     } catch {
       setGlobalMessage("Manual effort entry failed to save.");
+      pushToast("Manual effort entry failed to save.", "error");
     }
   };
 
   const startTimer = () => {
     setTimerStartedAt(new Date().toISOString());
-    setGlobalMessage(
-      `Timer started. Sessions will later exclude roughly ${idleThresholdMinutes} idle minutes when auto-tracking is added.`,
-    );
+    const timerStartedMessage = `Timer started. Sessions will later exclude roughly ${idleThresholdMinutes} idle minutes when auto-tracking is added.`;
+    setGlobalMessage(timerStartedMessage);
+    pushToast(timerStartedMessage, "info");
   };
 
   const stopTimer = async () => {
@@ -411,13 +431,30 @@ export function ProjectDashboardV2() {
       setTimerStartedAt(null);
       setManualNotes("");
       setGlobalMessage("Timed human effort saved.");
+      pushToast("Timed human effort saved.", "success");
     } catch {
       setGlobalMessage("Timed effort entry failed to save.");
+      pushToast("Timed effort entry failed to save.", "error");
     }
   };
 
   return (
     <main className="shell">
+      <div className="toast-stack" role="status" aria-live="polite">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast toast-${toast.tone}`}>
+            <span>{toast.message}</span>
+            <button
+              type="button"
+              className="toast-dismiss"
+              onClick={() => dismissToast(toast.id)}
+              aria-label="Dismiss notification"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
       <div className="frame">
         {/* hero-single below matches the CSS override added while the right-hand
             status panel is disabled -- remove that class if the panel comes back. */}
